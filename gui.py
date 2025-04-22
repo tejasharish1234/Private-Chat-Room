@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, simpledialog
+from tkinter import filedialog, messagebox, simpledialog, ttk
 import socket
 import threading
 from file_transfer import send_file
@@ -14,24 +14,19 @@ def send_message():
         try:
             client_socket.send("__send_texts__".encode())
             client_socket.send(f"{client_name}: {message}".encode())
-            # Show message in sender's chat box
             log_chat(f"{client_name} (You): {message}")
             message_entry.delete(0, tk.END)
-
         except:
             messagebox.showerror("Error", "Failed to send message.")
-
 
 def receive_messages():
     while True:
         try:
-            msg = ''
             msg = client_socket.recv(14)
             if not msg:
                 break
 
             decoded = msg.decode('utf-8', errors='ignore')
-            print(decoded)
             if decoded.startswith("__send_files__"):
                 filename_len = int(client_socket.recv(4).decode())
                 filename = client_socket.recv(filename_len).decode()
@@ -42,7 +37,6 @@ def receive_messages():
                     if not chunk:
                         break
                     data += chunk
-
                 save_path = filedialog.asksaveasfilename(initialfile=filename, defaultextension=".txt")
                 if save_path:
                     with open(save_path, "wb") as f:
@@ -59,7 +53,6 @@ def receive_messages():
                     if not chunk:
                         break
                     data += chunk
-
                 save_path = filedialog.asksaveasfilename(initialfile=filename, defaultextension=".mp4")
                 if save_path:
                     with open(save_path, "wb") as f:
@@ -67,11 +60,8 @@ def receive_messages():
                     log_chat(f"[Received video: {filename}]")
 
             elif decoded.startswith("__send_texts__"):
-                # Handle regular message
-                message = ''
-                message = client_socket.recv(4096).decode(errors='ignore')
+                message = client_socket.recv(1024).decode(errors='ignore')
                 log_chat(message)
-
         except Exception as e:
             print("Receive error:", e)
             break
@@ -81,7 +71,7 @@ def log_chat(message):
     chat_box.insert(tk.END, f'{message}\n')
     chat_box.config(state=tk.DISABLED)
     chat_box.see(tk.END)
-    
+
 def send_file_gui():
     file_path = filedialog.askopenfilename(defaultextension=".txt")
     if file_path:
@@ -112,7 +102,7 @@ def connect_to_server():
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((ip, 12345))
         client_socket.send(client_name.encode())
-        status_label.config(text=f"Connected as {client_name}", fg="green")
+        status_label.config(text=f"Connected as {client_name}", foreground="green")
         send_btn.config(state=tk.NORMAL)
         file_btn.config(state=tk.NORMAL)
         video_btn.config(state=tk.NORMAL)
@@ -122,36 +112,48 @@ def connect_to_server():
 
 # GUI Setup
 window = tk.Tk()
-window.title("Chat App")
-window.geometry("500x600")
+window.title("Private Chat Room")
+window.geometry("580x650")
+window.configure(bg="#e6f0f7")
 
-status_label = tk.Label(window, text="Disconnected", fg="red")
+header = tk.Label(window, text="🔒 Welcome to the Secure Chat Room", font=("Helvetica", 16, "bold"), bg="#e6f0f7", fg="#003366")
+header.pack(pady=(10, 5))
+
+status_label = tk.Label(window, text="Disconnected", fg="red", bg="#e6f0f7", font=("Helvetica", 10, "italic"))
 status_label.pack()
 
-ip_label = tk.Label(window, text="Server IP:")
-ip_label.pack()
-ip_entry = tk.Entry(window)
-ip_entry.pack()
+connection_frame = tk.Frame(window, bg="#e6f0f7")
+connection_frame.pack(pady=10)
 
-connect_btn = tk.Button(window, text="Connect", command=connect_to_server)
-connect_btn.pack()
+ip_label = tk.Label(connection_frame, text="Server IP:", bg="#e6f0f7", font=("Helvetica", 11))
+ip_label.grid(row=0, column=0, padx=5)
 
-chat_box = tk.Text(window, height=15, width=60, state=tk.DISABLED)
+ip_entry = tk.Entry(connection_frame, width=30)
+ip_entry.grid(row=0, column=1, padx=5)
+
+connect_btn = tk.Button(connection_frame, text="Connect", bg="#4CAF50", fg="white", command=connect_to_server)
+connect_btn.grid(row=0, column=2, padx=5)
+
+chat_box = tk.Text(window, height=20, width=70, bg="white", font=("Helvetica", 10), wrap="word", relief="solid", bd=1)
 chat_box.pack(pady=10)
+chat_box.config(state=tk.DISABLED)
 
-message_entry = tk.Entry(window, width=50)
-message_entry.pack()
+message_frame = tk.Frame(window, bg="#e6f0f7")
+message_frame.pack(pady=5)
 
-send_btn = tk.Button(window, text="Send", command=send_message, state=tk.DISABLED)
-send_btn.pack(pady=5)
+message_entry = tk.Entry(message_frame, width=45)
+message_entry.grid(row=0, column=0, padx=5)
 
-file_btn = tk.Button(window, text="Send File", command=send_file_gui, state=tk.DISABLED)
-file_btn.pack()
+send_btn = tk.Button(message_frame, text="Send", bg="#2196F3", fg="white", command=send_message, state=tk.DISABLED)
+send_btn.grid(row=0, column=1, padx=5)
 
-video_btn = tk.Button(window, text="Send Video File", command=send_video_gui, state=tk.DISABLED)
-video_btn.pack()
+file_btn = tk.Button(window, text="📄 Send File", width=20, bg="#f0ad4e", fg="white", command=send_file_gui, state=tk.DISABLED)
+file_btn.pack(pady=4)
 
-exit_btn = tk.Button(window, text="Exit", command=close_app)
-exit_btn.pack(pady=10)
+video_btn = tk.Button(window, text="🎥 Send Video", width=20, bg="#5bc0de", fg="white", command=send_video_gui, state=tk.DISABLED)
+video_btn.pack(pady=4)
+
+exit_btn = tk.Button(window, text="🚪 Exit", width=20, bg="#d9534f", fg="white", command=close_app)
+exit_btn.pack(pady=15)
 
 window.mainloop()
